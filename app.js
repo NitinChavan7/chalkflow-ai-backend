@@ -1,0 +1,14 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const app = express();
+app.use(helmet());
+const allowed = (process.env.CLIENT_URL || '').split(',').map(s => s.trim()).filter(Boolean);
+app.use(cors({ origin: (origin, cb) => cb(null, !origin || allowed.includes(origin)) }));
+app.use(express.json({ limit: '64kb' }));
+if (process.env.NODE_ENV !== 'test') app.use(morgan('combined'));
+app.use('/api', require('./modules'));
+app.use(require('./middleware/not-found.middleware'));
+app.use(require('./middleware/error.middleware'));
+module.exports = app;
