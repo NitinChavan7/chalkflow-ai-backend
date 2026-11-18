@@ -1,27 +1,13 @@
-const mongoose = require("mongoose");
-
-async function connectDB(uri) {
-  try {
-    if (!uri) {
-      throw new Error("MongoDB URI is missing");
-    }
-
-    mongoose.connection.on("disconnected", () => {
-      console.warn("MongoDB disconnected");
-    });
-
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000,
-    });
-
-    console.log("MongoDB connected successfully");
-    console.log("Database:", mongoose.connection.name);
-
-    return mongoose.connection;
-  } catch (error) {
-    console.error("MongoDB connection error:", error.message);
-    throw error;
+const mongoose = require('mongoose');
+let pendingConnection;
+async function connectDB(uri = process.env.MONGODB_URI) {
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
+  if (!uri) throw new Error('MONGODB_URI is not configured');
+  if (!pendingConnection) {
+    pendingConnection = mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 })
+      .then(() => mongoose.connection)
+      .finally(() => { pendingConnection = undefined; });
   }
+  return pendingConnection;
 }
-
 module.exports = connectDB;

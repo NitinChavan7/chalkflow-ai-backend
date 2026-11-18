@@ -7,6 +7,7 @@ async function aiJson(instructions, data, schema) {
     try { response = await getGroq().chat.completions.create({ model: process.env.GROQ_MODEL, messages, response_format: { type: 'json_object' }, temperature: 0.3, max_tokens: 6000 }); }
     catch (error) {
       // Provider messages can contain sensitive details; report only a safe category.
+      console.error('Groq request failed', { name: error.name, status: Number.isInteger(error.status) ? error.status : undefined, configured: Boolean(process.env.GROQ_API_KEY && process.env.GROQ_MODEL) });
       if (error.status === 401 || error.status === 403) throw new ApiError(502, 'AI service authentication failed');
       if (error.status === 400 || error.status === 404) throw new ApiError(502, 'AI service rejected the request or model');
       if (error.status === 429) throw new ApiError(503, 'AI service rate limit reached');
@@ -17,8 +18,10 @@ async function aiJson(instructions, data, schema) {
     let result;
     try { result = schema.safeParse(JSON.parse(content)); } catch { result = { success: false }; }
     if (result.success) return result.data;
+    console.warn('Groq response failed validation', { attempt: attempt + 1, finishReason: response.choices?.[0]?.finish_reason, issueCount: result.error?.issues?.length || 0 });
     if (attempt === 0) {
       const issues = result.error?.issues?.slice(0, 10).map(issue => `${issue.path.join('.') || 'root'}: ${issue.message}`).join('; ') || 'Invalid or empty JSON';
+      if (typeof content === 'string' && content.length <= 40000) messages.push({ role: 'assistant', content });
       messages.push({ role: 'user', content: `Your previous response was invalid: ${issues}. Return a complete corrected JSON object matching all requirements.` });
     }
   }

@@ -46,6 +46,8 @@ npm test
 
 The server validates configuration and connects to MongoDB before listening. Tests mock AI and repositories and need neither MongoDB nor a Groq key.
 
+On Vercel, configure `MONGODB_URI`, `GROQ_API_KEY`, `GROQ_MODEL` and `CLIENT_URL` in the project's Production environment and redeploy after changing them. The exported Express app establishes and reuses a MongoDB connection on database-backed requests; the health route remains a liveness check. Ensure Atlas network access permits the deployed function. The function duration must allow for a cold database connection and up to two Groq requests (each with a 30-second timeout).
+
 ## API
 
 - `GET /api/health`
